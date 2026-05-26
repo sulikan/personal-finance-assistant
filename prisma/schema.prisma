@@ -1,0 +1,123 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum UserRole {
+  ADMIN
+  USER
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      UserRole @default(USER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  wallets      Wallet[]
+  categories   Category[]
+  transactions Transaction[]
+}
+
+model Wallet {
+  id          String     @id @default(cuid())
+  userId      String
+  name        String
+  type        WalletType
+  balance     Float      @default(0)
+  description String     @default("")
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lines  TransactionLine[]
+
+  @@index([userId])
+}
+
+model Category {
+  id          String          @id @default(cuid())
+  userId      String
+  name        String
+  type        TransactionType
+  parentId    String?
+  description String          @default("")
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  user     User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent   Category?  @relation("SubCategories", fields: [parentId], references: [id], onDelete: SetNull)
+  children Category[] @relation("SubCategories")
+  transactions Transaction[]
+
+  @@index([userId])
+  @@index([parentId])
+}
+
+model Transaction {
+  id          String          @id @default(cuid())
+  userId      String
+  description String
+  amount      Float
+  type        TransactionType
+  date        DateTime
+  categoryId  String
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  lines    TransactionLine[]
+
+  @@index([userId])
+  @@index([date])
+  @@index([categoryId])
+}
+
+model TransactionLine {
+  id            String          @id @default(cuid())
+  transactionId String
+  walletId      String
+  entryType     EntryType
+  amount        Float
+  accountType   AccountingType
+  createdAt     DateTime        @default(now())
+
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  wallet      Wallet      @relation(fields: [walletId], references: [id], onDelete: Restrict)
+
+  @@index([transactionId])
+  @@index([walletId])
+  @@index([accountType])
+}
+
+enum WalletType {
+  CASH
+  BANK
+  E_WALLET
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+enum EntryType {
+  DEBIT
+  CREDIT
+}
+
+enum AccountingType {
+  ASSET
+  LIABILITY
+  EQUITY
+  INCOME
+  EXPENSE
+}
